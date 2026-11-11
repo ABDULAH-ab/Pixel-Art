@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project outputs (large files; weights go to the Hugging Face Hub instead)
+data/
+outputs/
+*.safetensors

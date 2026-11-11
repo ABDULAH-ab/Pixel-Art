@@ -18,8 +18,13 @@ TRIGGER = "pxlsprite"
 
 
 def lora_prompt(subject: str) -> str:
-    """Prompt format the LoRA was trained on."""
-    return f"{TRIGGER}, {subject}"
+    """Prompt format the LoRA was trained on.
+
+    The trigger word is followed by a plain description. SDXL already knows what
+    "pixel art sprite" and "white background" mean, so the LoRA only has to refine
+    that into a clean grid instead of learning everything from a made-up word.
+    """
+    return f"{TRIGGER}, pixel art sprite of {subject}, white background"
 
 
 def base_prompt(subject: str) -> str:

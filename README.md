@@ -31,11 +31,11 @@ Measured on _TODO: GPU name_, 1024x1024, fp16, averaged over 8 prompts.
 
 ### Data
 
-Training data comes from [Pixel Art Atlas](https://huggingface.co/datasets/Angais/pixel-art-atlas-1.4m) (1.4M captioned 16x16 sprites, CC0). `scripts/prepare_data.py` samples 500 sprites, one per subject, so the model learns the style rather than a few objects. Each sprite is pasted onto a white background and upscaled to 1024x1024 with nearest-neighbour interpolation, which keeps every sprite pixel as a sharp 64x64 block.
+Training data comes from [Pixel Art Atlas](https://huggingface.co/datasets/Angais/pixel-art-atlas-1.4m) (1.4M captioned 16x16 sprites, CC0). `scripts/prepare_data.py` samples 1000 sprites, one per subject, so the model learns the style rather than a few objects. Each sprite is pasted onto a white background and upscaled to 1024x1024 with nearest-neighbour interpolation, which keeps every sprite pixel as a sharp 64x64 block.
 
 ### Fine-tuning
 
-A LoRA (rank 16) is trained on the SDXL UNet with the official `diffusers` script. Only the LoRA matrices are trained; the base model stays frozen, so the result is a small file instead of a multi-gigabyte checkpoint. Every caption starts with the trigger word `pxlsprite`.
+A LoRA (rank 32) is trained on the SDXL UNet with the official `diffusers` script. Only the LoRA matrices are trained; the base model stays frozen, so the result is a small file instead of a multi-gigabyte checkpoint. Every caption has the form `pxlsprite, pixel art sprite of <subject>, white background`: a trigger word plus a description the base model already understands. Training uses Min-SNR loss weighting and a small noise offset, which helps the model produce clean white backgrounds.
 
 ### Inference optimisation
 
@@ -61,7 +61,7 @@ Or step by step:
 
 ```bash
 pip install -r requirements.txt
-python scripts/prepare_data.py --n 500
+python scripts/prepare_data.py --n 1000
 # train: see the notebook for the full command
 python scripts/benchmark.py --lora outputs/pixel-lora
 LORA_REPO=outputs/pixel-lora python app.py

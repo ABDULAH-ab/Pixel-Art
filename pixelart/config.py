@@ -32,6 +32,9 @@ def base_prompt(subject: str) -> str:
     return f"pixel art sprite of {subject}, 16x16, white background"
 
 
+# Subjects shown in the README comparison image (a subset of EVAL_SUBJECTS).
+SHOWCASE_SUBJECTS = ["a red apple", "a blue potion bottle", "a green slime monster", "a small pine tree"]
+
 # Fixed prompts used for every benchmark configuration, so results are comparable.
 EVAL_SUBJECTS = [
     "a red apple",

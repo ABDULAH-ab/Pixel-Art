@@ -2,10 +2,10 @@
 
 Pixel art generation with a fine-tuned SDXL LoRA, optimised for few-step inference. Features latency/VRAM/quality benchmarks, a custom pixel-grid metric, and a live Gradio demo.
 
-<!-- TODO after training: add the before/after image here, e.g. ![Before and after](assets/comparison.png) -->
+![Base SDXL compared with the pixel-art LoRA at 30 steps and at 6 steps](assets/comparison.png)
 
 **Live demo:** _TODO: Hugging Face Space link_
-**LoRA weights:** _TODO: Hugging Face Hub link_
+**LoRA weights:** [unsupervised-abdullah/pixel-art-sdxl-lora](https://huggingface.co/unsupervised-abdullah/pixel-art-sdxl-lora)
 
 ## What this project does
 
@@ -16,16 +16,43 @@ Pixel art generation with a fine-tuned SDXL LoRA, optimised for few-step inferen
 
 ## Results
 
-_TODO: paste the table from `outputs/benchmark/results.md` after running the benchmark._
-
 | Config | Steps | Latency (s) | Speed-up | Peak VRAM (GB) | CLIP score | Grid error | Palette size |
 |---|---|---|---|---|---|---|---|
-| base_30step | 30 | | | | | | |
-| lora_30step | 30 | | | | | | |
-| lora_lcm_6step | 6 | | | | | | |
-| lora_lcm_6step_taesd | 6 | | | | | | |
+| base_30step | 30 | 25.42 | 1.0x | 9.5 | 38.5 | 0.1236 | 74 |
+| lora_30step | 30 | 27.63 | 0.9x | 9.6 | 35.6 | 0.0280 | 46 |
+| lora_lcm_6step | 6 | 4.64 | 5.5x | 10.0 | 36.3 | 0.0177 | 39 |
+| lora_lcm_6step_taesd | 6 | 3.86 | 6.6x | 8.1 | 36.2 | 0.0190 | 40 |
 
-Measured on _TODO: GPU name_, 1024x1024, fp16, averaged over 8 prompts.
+Measured on a single NVIDIA T4 (Kaggle), 1024x1024, fp16, averaged over 9 generations (8 distinct prompts, one repeated with a second seed). Lower is better for latency, VRAM, grid error and palette size; higher is better for CLIP score.
+
+**What the numbers show**
+
+- **6.6x faster:** 25.4 s down to 3.9 s per image, with 1.4 GB less peak VRAM.
+- **Much closer to real pixel art:** grid error falls by 85% (0.124 to 0.019) and the palette roughly halves.
+- **Small cost in prompt match:** CLIP score drops 2.3 points. Part of that is expected, because a 16x16 sprite carries far less detail for CLIP to recognise than the base model's detailed drawings.
+- **The base model draws scenes, not sprites:** it produces piles of apples, shelves of bottles and forests, while the LoRA produces one centred object.
+- **The LoRA alone is slightly slower** (27.6 s vs 25.4 s) because it runs as extra layers beside the model. The speed-up comes from few-step sampling.
+
+**Known limitations**
+
+- Backgrounds are not always white; some come out grey, blue or pink.
+- Some objects are weak: the donut is washed out and the sword reads more like an axe.
+- Outputs are close to the pixel grid but not exactly on it. The demo's "snap to grid" option fixes that last step.
+- The benchmark uses a small prompt set, so the scores are indicative rather than precise.
+
+### What didn't work first
+
+The first training run (500 images, 1200 steps, rank 16, captions of the form `pxlsprite, <subject>`) produced blocky but unrecognisable images on grey backgrounds. Grid error improved while CLIP score fell from 38.5 to 33.1 in the 6-step configuration, and the images confirmed the model had learned "big flat blocks" without learning what a sprite is.
+
+Three changes fixed it:
+
+| Problem | Fix |
+|---|---|
+| Captions relied only on a made-up trigger word | Added a description the base model already understands (`pixel art sprite of ..., white background`) |
+| Too little training for a large style change | 1000 images, 3000 steps, rank 32, Min-SNR loss weighting |
+| SDXL drifts towards mid-grey images | Noise offset of 0.05 |
+
+The takeaway: grid error alone is misleading, since mushy blocks also score well. It has to be read together with CLIP score and the images.
 
 ## How it works
 

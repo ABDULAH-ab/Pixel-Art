@@ -46,7 +46,8 @@ def build_pipeline(cfg: RunConfig, lora: str, device: str = "cuda") -> StableDif
     # ours supplies the style, the LCM one supplies few-step sampling.
     adapters = []
     if cfg.use_lora:
-        pipe.load_lora_weights(lora, adapter_name="pixel")
+        # Name the file explicitly: the Hub repo also holds intermediate checkpoints.
+        pipe.load_lora_weights(lora, weight_name="pytorch_lora_weights.safetensors", adapter_name="pixel")
         adapters.append("pixel")
     if cfg.use_lcm:
         pipe.load_lora_weights(LCM_LORA, adapter_name="lcm")

@@ -20,12 +20,12 @@ import time
 from pathlib import Path
 
 import torch
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from transformers import CLIPModel, CLIPProcessor
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pixelart.config import EVAL_SUBJECTS, IMAGE_SIZE, base_prompt, lora_prompt  # noqa: E402
-from pixelart.metrics import grid_error, palette_size  # noqa: E402
+from pixelart.config import EVAL_SUBJECTS, IMAGE_SIZE, SHOWCASE_SUBJECTS, base_prompt, lora_prompt  # noqa: E402
+from pixelart.metrics import grid_error, palette_size, snap_to_grid  # noqa: E402
 from pixelart.pipeline import CONFIGS, build_pipeline  # noqa: E402
 
 
@@ -55,6 +55,35 @@ def make_grid(images: list, thumb: int = 256) -> Image.Image:
     return grid
 
 
+def make_comparison(images_by_config: dict, labels: dict, thumb: int = 192) -> Image.Image:
+    """README image: one labelled row per configuration, showcase subjects only.
+
+    192px thumbnails keep the whole image under 800px wide, so GitHub shows it at
+    its real size. A browser that has to shrink an image smooths it, which makes
+    crisp pixel art look blurry. Every row uses the same resize filter.
+    """
+    columns = [EVAL_SUBJECTS.index(s) for s in SHOWCASE_SUBJECTS]
+    pad, label_h = 8, 28
+    try:
+        font = ImageFont.load_default(size=16)
+    except TypeError:  # older Pillow
+        font = ImageFont.load_default()
+
+    width = pad + len(columns) * (thumb + pad)
+    height = pad + len(images_by_config) * (label_h + thumb + pad)
+    out = Image.new("RGB", (width, height), "white")
+    draw = ImageDraw.Draw(out)
+
+    y = pad
+    for name, images in images_by_config.items():
+        draw.text((pad, y + 4), labels[name], fill=(30, 30, 30), font=font)
+        y += label_h
+        for i, col in enumerate(columns):
+            out.paste(images[col].resize((thumb, thumb), Image.Resampling.LANCZOS), (pad + i * (thumb + pad), y))
+        y += thumb + pad
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--lora", required=True, help="local folder or Hub repo id of the trained LoRA")
@@ -66,6 +95,7 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)
     clip = ClipScorer(device)
     results = []
+    all_images, labels = {}, {}
 
     for cfg in CONFIGS:
         print(f"== {cfg.name}")
@@ -109,10 +139,26 @@ def main() -> None:
         })
         make_grid(images).save(args.out / f"grid_{cfg.name}.png")
 
+        # Keep the full-size images too: thumbnails hide how crisp the sprites are.
+        image_dir = args.out / "images" / cfg.name
+        image_dir.mkdir(parents=True, exist_ok=True)
+        for i, image in enumerate(images):
+            image.save(image_dir / f"{i:02d}.png")
+        all_images[cfg.name] = images
+        labels[cfg.name] = f"{cfg.name}: {cfg.steps} steps, {results[-1]['latency_s']:.1f} s per image"
+
         # Free the GPU before loading the next configuration.
         del pipe
         gc.collect()
         torch.cuda.empty_cache()
+
+    # Extra row for the README: the fastest configuration after snapping to the grid.
+    # Snapping is plain NumPy on the finished image (a fraction of a second on the CPU)
+    # and is not included in the latency column.
+    fastest = CONFIGS[-1].name
+    all_images["snapped"] = [snap_to_grid(im) for im in all_images[fastest]]
+    labels["snapped"] = f"{fastest} + snap to grid"
+    make_comparison(all_images, labels).save(args.out / "comparison.png")
 
     baseline = results[0]["latency_s"]
     lines = [

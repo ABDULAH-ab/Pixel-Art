@@ -15,14 +15,20 @@ from pixelart.pipeline import CONFIGS, build_pipeline
 try:
     import spaces  # only exists on Hugging Face Spaces; gives the app a GPU on demand
     gpu = spaces.GPU
+    ON_SPACES = True
 except ImportError:
+    ON_SPACES = False
+
     def gpu(fn):
         return fn
 
-LORA = os.environ.get("LORA_REPO", "outputs/pixel-lora")
+LORA = os.environ.get("LORA_REPO", "unsupervised-abdullah/pixel-art-sdxl-lora")
 FAST = next(c for c in CONFIGS if c.name == "lora_lcm_6step")  # the fast configuration from the benchmark
 
-pipe = build_pipeline(FAST, LORA, "cuda" if torch.cuda.is_available() else "cpu")
+# On Spaces the GPU is only attached while generate() runs, but the model must still be
+# placed on "cuda" at start-up; the `spaces` library handles the hand-over.
+DEVICE = "cuda" if ON_SPACES or torch.cuda.is_available() else "cpu"
+pipe = build_pipeline(FAST, LORA, DEVICE)
 
 
 @gpu
@@ -33,7 +39,7 @@ def generate(subject: str, steps: int, seed: int, snap: bool):
         guidance_scale=FAST.guidance,
         height=IMAGE_SIZE,
         width=IMAGE_SIZE,
-        generator=torch.Generator(pipe.device).manual_seed(int(seed)),
+        generator=torch.Generator(DEVICE).manual_seed(int(seed)),
     ).images[0]
     return snap_to_grid(image) if snap else image
 

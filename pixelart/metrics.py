@@ -48,12 +48,59 @@ def palette_size(img: Image.Image, cell: int = CELL, bits: int = 4) -> int:
     return int(len(np.unique(quantised.reshape(-1, 3), axis=0)))
 
 
+def _best_grid_offset(arr: np.ndarray, cell: int) -> tuple:
+    """Grid position (dy, dx) in pixels that gives the lowest grid error.
+
+    Works on a 4x smaller copy so trying many positions stays fast.
+    """
+    shrink = 4 if cell % 4 == 0 else 1
+    small = arr[::shrink, ::shrink].astype(np.float32)
+    c = cell // shrink
+
+    best_error, best = None, (0, 0)
+    for dy in range(0, c, 2):
+        for dx in range(0, c, 2):
+            shifted = np.roll(small, (-dy, -dx), axis=(0, 1))
+            means = _cell_means(shifted, c)
+            error = np.abs(shifted - means.repeat(c, axis=0).repeat(c, axis=1)).mean()
+            # Only move away from the default position for a clear improvement.
+            if best_error is None or error < best_error * 0.95:
+                best_error, best = error, (dy * shrink, dx * shrink)
+    return best
+
+
 def snap_to_grid(img: Image.Image, cell: int = CELL) -> Image.Image:
     """Post-process: force the image onto the pixel grid.
 
-    Shrinks to one pixel per cell, then scales back up without smoothing, so the
-    result is a true sprite (grid error exactly 0).
+    Two steps:
+    1. Find where the model's blocks actually sit. The model draws blocks of the
+       right size but not always starting at pixel 0, so we slide the grid and
+       keep the position where the image is most block-like (lowest grid error).
+    2. Fill every cell with its most common colour. Unlike averaging, this never
+       invents blended in-between colours.
+
+    The result is a true sprite (grid error exactly 0).
     """
-    w, h = img.size
-    small = img.convert("RGB").resize((w // cell, h // cell), Image.Resampling.NEAREST)
-    return small.resize((w, h), Image.Resampling.NEAREST)
+    arr = np.asarray(img.convert("RGB"))
+    h, w = (arr.shape[0] // cell) * cell, (arr.shape[1] // cell) * cell
+    arr = arr[:h, :w]
+
+    dy, dx = _best_grid_offset(arr, cell)
+    arr = np.roll(arr, (-dy, -dx), axis=(0, 1))  # shift the image so its blocks line up with the grid
+
+    # (rows, cols, pixels-in-cell, 3)
+    cells = arr.reshape(h // cell, cell, w // cell, cell, 3).transpose(0, 2, 1, 3, 4)
+    cells = cells.reshape(h // cell, w // cell, cell * cell, 3)
+
+    # Group near-identical shades by rounding to 5 bits per channel.
+    coarse = cells >> 3
+    keys = (coarse[..., 0].astype(np.int32) << 10) | (coarse[..., 1].astype(np.int32) << 5) | coarse[..., 2]
+
+    small = np.zeros((h // cell, w // cell, 3), dtype=np.uint8)
+    for r in range(h // cell):
+        for c in range(w // cell):
+            values, counts = np.unique(keys[r, c], return_counts=True)
+            winner = keys[r, c] == values[counts.argmax()]
+            small[r, c] = cells[r, c][winner].mean(axis=0).round()
+
+    return Image.fromarray(small).resize((w, h), Image.Resampling.NEAREST)

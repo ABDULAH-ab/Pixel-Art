@@ -18,8 +18,6 @@ The same prompts, turned into 16x16 game sprites with the same two steps (snap t
 
 ## Results
 
-![Base SDXL compared with the pixel-art LoRA at 30 steps, at 6 steps, and after snapping to the grid](assets/comparison.png)
-
 | Config | Steps | Latency (s) | Speed-up | Peak VRAM (GB) | CLIP score | Grid error | Palette size |
 |---|---|---|---|---|---|---|---|
 | base_30step | 30 | 25.48 | 1.0x | 9.5 | 38.5 | 0.1236 | 74 |

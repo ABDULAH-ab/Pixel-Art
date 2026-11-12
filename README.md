@@ -2,7 +2,9 @@
 
 Pixel art generation with a fine-tuned SDXL LoRA, optimised for few-step inference. Features latency/VRAM/quality benchmarks, a custom pixel-grid metric, and a live Gradio demo.
 
-![Base SDXL compared with the pixel-art LoRA at 30 steps and at 6 steps](assets/comparison.png)
+![Base SDXL output and LoRA output, each reduced to 16x16 sprites in a game inventory bar](assets/showcase.png)
+
+The same prompts, turned into 16x16 game sprites with the same two steps (snap to a 16x16 grid, remove the background). Base SDXL draws detailed scenes that fall apart at sprite size. The LoRA draws one object that survives as a usable sprite, in 3.8 s instead of 25.5 s.
 
 **Live demo:** _TODO: Hugging Face Space link_
 **LoRA weights:** [unsupervised-abdullah/pixel-art-sdxl-lora](https://huggingface.co/unsupervised-abdullah/pixel-art-sdxl-lora)
@@ -15,6 +17,8 @@ Pixel art generation with a fine-tuned SDXL LoRA, optimised for few-step inferen
 4. **Deploys** the fast configuration as a Gradio demo.
 
 ## Results
+
+![Base SDXL compared with the pixel-art LoRA at 30 steps, at 6 steps, and after snapping to the grid](assets/comparison.png)
 
 | Config | Steps | Latency (s) | Speed-up | Peak VRAM (GB) | CLIP score | Grid error | Palette size |
 |---|---|---|---|---|---|---|---|
@@ -37,7 +41,8 @@ Measured on a single NVIDIA T4 (Kaggle), 1024x1024, fp16, averaged over 9 genera
 
 - Backgrounds are not always white; some come out grey, blue or pink.
 - Some objects are weak: the donut is washed out and the sword reads more like an axe.
-- Outputs are close to the pixel grid but not exactly on it. The demo's "snap to grid" option fixes that last step.
+- Raw outputs are close to the pixel grid but not exactly on it. A snap-to-grid step (`pixelart/metrics.py`) finds where the model's blocks sit and fills each cell with its main colour; it can change the colour of an odd cell.
+- Background removal for the showcase is a simple flood fill from the border, so pale halo cells around some sprites are left in.
 - The benchmark uses a small prompt set, so the scores are indicative rather than precise.
 
 ### What didn't work first
@@ -91,6 +96,7 @@ pip install -r requirements.txt
 python scripts/prepare_data.py --n 1000
 # train: see the notebook for the full command
 python scripts/benchmark.py --lora outputs/pixel-lora
+python scripts/make_showcase.py
 LORA_REPO=outputs/pixel-lora python app.py
 ```
 
@@ -102,6 +108,7 @@ pixelart/metrics.py     grid error, palette size, snap-to-grid
 pixelart/pipeline.py    builds SDXL in each benchmark configuration
 scripts/prepare_data.py builds the training set
 scripts/benchmark.py    measures latency, VRAM and quality
+scripts/make_showcase.py builds the 16x16 sprite showcase image
 notebooks/              end-to-end Kaggle notebook
 app.py                  Gradio demo
 ```

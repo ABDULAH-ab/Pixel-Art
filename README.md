@@ -6,7 +6,7 @@ Pixel art generation with a fine-tuned SDXL LoRA, optimised for few-step inferen
 
 The same prompts, turned into 16x16 game sprites with the same two steps (snap to a 16x16 grid, remove the background). Base SDXL draws detailed scenes that fall apart at sprite size. The LoRA draws one object that survives as a usable sprite, in 3.8 s instead of 25.5 s.
 
-**Live demo:** _TODO: Hugging Face Space link_
+Hugging Face Space link_
 **LoRA weights:** [unsupervised-abdullah/pixel-art-sdxl-lora](https://huggingface.co/unsupervised-abdullah/pixel-art-sdxl-lora)
 
 ## What this project does

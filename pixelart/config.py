@@ -42,8 +42,5 @@ EVAL_SUBJECTS = [
     "a blue potion bottle",
     "a golden key",
     "a green slime monster",
-    "an iron sword",
     "a small pine tree",
-    "a pink frosted donut",
-    "a green slime monster",
 ]

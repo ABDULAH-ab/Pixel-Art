@@ -18,20 +18,20 @@ Pixel art generation with a fine-tuned SDXL LoRA, optimised for few-step inferen
 
 | Config | Steps | Latency (s) | Speed-up | Peak VRAM (GB) | CLIP score | Grid error | Palette size |
 |---|---|---|---|---|---|---|---|
-| base_30step | 30 | 25.42 | 1.0x | 9.5 | 38.5 | 0.1236 | 74 |
-| lora_30step | 30 | 27.63 | 0.9x | 9.6 | 35.6 | 0.0280 | 46 |
-| lora_lcm_6step | 6 | 4.64 | 5.5x | 10.0 | 36.3 | 0.0177 | 39 |
-| lora_lcm_6step_taesd | 6 | 3.86 | 6.6x | 8.1 | 36.2 | 0.0190 | 40 |
+| base_30step | 30 | 25.48 | 1.0x | 9.5 | 38.5 | 0.1236 | 74 |
+| lora_30step | 30 | 27.85 | 0.9x | 9.6 | 35.6 | 0.0280 | 46 |
+| lora_lcm_6step | 6 | 4.57 | 5.6x | 10.0 | 36.3 | 0.0177 | 39 |
+| lora_lcm_6step_taesd | 6 | 3.79 | 6.7x | 8.1 | 36.2 | 0.0190 | 40 |
 
 Measured on a single NVIDIA T4 (Kaggle), 1024x1024, fp16, averaged over 9 generations (8 distinct prompts, one repeated with a second seed). Lower is better for latency, VRAM, grid error and palette size; higher is better for CLIP score.
 
 **What the numbers show**
 
-- **6.6x faster:** 25.4 s down to 3.9 s per image, with 1.4 GB less peak VRAM.
+- **6.7x faster:** 25.5 s down to 3.8 s per image, with 1.4 GB less peak VRAM.
 - **Much closer to real pixel art:** grid error falls by 85% (0.124 to 0.019) and the palette roughly halves.
 - **Small cost in prompt match:** CLIP score drops 2.3 points. Part of that is expected, because a 16x16 sprite carries far less detail for CLIP to recognise than the base model's detailed drawings.
 - **The base model draws scenes, not sprites:** it produces piles of apples, shelves of bottles and forests, while the LoRA produces one centred object.
-- **The LoRA alone is slightly slower** (27.6 s vs 25.4 s) because it runs as extra layers beside the model. The speed-up comes from few-step sampling.
+- **The LoRA alone is slightly slower** (27.9 s vs 25.5 s) because it runs as extra layers beside the model. The speed-up comes from few-step sampling.
 
 **Known limitations**
 

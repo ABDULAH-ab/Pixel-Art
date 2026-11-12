@@ -11,6 +11,7 @@ through the same two steps and shows the result:
 No GPU needed. It reads the images scripts/benchmark.py saved.
 
 Usage:  python scripts/make_showcase.py
+        python scripts/make_showcase.py --skip "an iron sword" "a pink frosted donut"
 """
 
 import argparse
@@ -117,10 +118,17 @@ def main() -> None:
     parser.add_argument("--base", default="base_30step")
     parser.add_argument("--lora", default="lora_lcm_6step_taesd")
     parser.add_argument("--out", type=Path, default=Path("outputs/benchmark/showcase.png"))
+    parser.add_argument("--skip", nargs="*", default=[], help="prompts to leave out of the image")
     args = parser.parse_args()
 
-    # One image per distinct prompt (the prompt list may contain repeats).
-    indices = [EVAL_SUBJECTS.index(s) for s in dict.fromkeys(EVAL_SUBJECTS)]
+    unknown = [s for s in args.skip if s not in EVAL_SUBJECTS]
+    if unknown:
+        parser.error(f"not in EVAL_SUBJECTS: {unknown}")
+
+    # One image per distinct prompt (the prompt list may contain repeats), minus the skipped ones.
+    # The benchmark saved its images by position in EVAL_SUBJECTS, so that list must not be
+    # edited to choose what appears here: use --skip instead.
+    indices = [EVAL_SUBJECTS.index(s) for s in dict.fromkeys(EVAL_SUBJECTS) if s not in args.skip]
 
     def load(config: str) -> list:
         return [Image.open(args.images / config / f"{i:02d}.png").convert("RGB") for i in indices]
